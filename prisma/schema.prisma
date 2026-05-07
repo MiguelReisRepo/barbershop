@@ -1,0 +1,60 @@
+// Tarzan's Barbershop — booking schema
+// Datetimes are ALWAYS stored as UTC ISO strings.
+// Schedule (working hours) lives in src/lib/schedule.ts, not in DB.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums (SQLite has no native enums; use string + app-level validation)
+// Status flow: PENDING (created by customer) -> CONFIRMED (manual by admin)
+//                                            -> CANCELLED (no-show, late >20min, customer cancel)
+//                                            -> COMPLETED (after the cut, increments loyaltyCount)
+
+model Client {
+  id            String    @id @default(cuid())
+  name          String
+  // Phone in E.164 format without "+" (e.g., 351912345678) — used for wa.me links and dedupe
+  phone         String    @unique
+  loyaltyCount  Int       @default(0) // increments on COMPLETED, every 6th = free
+  createdAt     DateTime  @default(now())
+  bookings      Booking[]
+
+  @@index([phone])
+}
+
+model Booking {
+  id           String    @id @default(cuid())
+  clientId     String
+  client       Client    @relation(fields: [clientId], references: [id])
+
+  serviceId    String    // matches id from src/lib/services.ts
+  serviceName  String    // denormalized snapshot in case the service changes/is removed
+  servicePrice Float     // denormalized in cents-equivalent (Float OK for 2dp money at this scale)
+  durationMin  Int       // duration in minutes (snapshot)
+
+  location     String    // "lisboa" | "setubal" — see src/lib/schedule.ts
+
+  startUtc     DateTime  // ALWAYS UTC
+  endUtc       DateTime  // ALWAYS UTC
+
+  status       String    @default("PENDING") // PENDING | CONFIRMED | CANCELLED | COMPLETED
+
+  // Google Calendar event id (set after successful GCal insert; null if pending or GCal write failed)
+  gcalEventId  String?
+
+  notes        String?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([startUtc])
+  @@index([location, startUtc])
+  @@index([status])
+}

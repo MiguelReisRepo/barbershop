@@ -1,65 +1,96 @@
-import Image from "next/image";
+import Link from "next/link"
+import { ChevronRight, MapPin, Clock, Award } from "lucide-react"
+import { BackgroundLogo } from "@/components/BackgroundLogo"
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      <Hero />
+      <Pillars />
+    </>
+  )
+}
+
+function Hero() {
+  return (
+    <section className="relative overflow-hidden">
+      <BackgroundLogo />
+
+      <div className="relative z-10 mx-auto max-w-5xl px-4 py-24 sm:py-32 text-center">
+        <h1 className="font-display text-5xl sm:text-7xl font-bold tracking-[0.08em] text-gold leading-none">
+          TARZAN&apos;S
+        </h1>
+        <p className="mt-2 font-display text-2xl sm:text-3xl tracking-[0.2em] text-foreground">
+          BARBERSHOP
+        </p>
+
+        <p className="mt-10 text-foreground/80 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+          Barbearia clássica em <span className="text-gold">Lisboa</span> e{" "}
+          <span className="text-gold">Setúbal</span>. Cortes precisos,
+          atendimento meticuloso e agenda online com confirmação imediata.
+        </p>
+
+        <div className="mt-14 flex justify-center">
+          <Link href="/marcar" className="btn-cta-block">
+            MARCAR AGORA
+            <ChevronRight className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={2.5} />
+          </Link>
+        </div>
+
+        <div className="mt-12">
+          <Link
+            href="/servicos"
+            className="text-sm text-muted hover:text-gold transition inline-flex items-center gap-1.5"
+          >
+            Ver serviços disponíveis
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Pillars() {
+  return (
+    <section className="border-t border-border">
+      <div className="mx-auto max-w-6xl px-4 py-20 grid sm:grid-cols-3 gap-6">
+        <Pillar
+          icon={<MapPin className="h-6 w-6" />}
+          title="DUAS LOCALIZAÇÕES"
+          body="Lisboa e Setúbal, com horários distintos para se adaptarem à tua semana."
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <Pillar
+          icon={<Clock className="h-6 w-6" />}
+          title="MARCAÇÃO IMEDIATA"
+          body="Agenda online disponível a qualquer hora, com confirmação automática por WhatsApp."
+        />
+        <Pillar
+          icon={<Award className="h-6 w-6" />}
+          title="CARTÃO FIDELIDADE"
+          body="Ao sexto corte oferecemos o seguinte. Sem complicações, sem cartões físicos."
+        />
+      </div>
+    </section>
+  )
+}
+
+function Pillar({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode
+  title: string
+  body: string
+}) {
+  return (
+    <div className="text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-gold/40 text-gold">
+        {icon}
+      </div>
+      <h3 className="font-display text-base tracking-[0.15em] text-gold">{title}</h3>
+      <p className="mt-2 text-sm text-foreground/75 leading-relaxed">{body}</p>
     </div>
-  );
+  )
 }
