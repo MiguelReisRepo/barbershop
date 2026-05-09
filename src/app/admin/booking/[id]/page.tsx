@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import { cookies } from "next/headers"
 import { CheckCircle2, XCircle, AlertTriangle, Clock, MapPin } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
+import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -18,6 +20,11 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const confirmed = sp.confirmed === "1"
   const rejected = sp.rejected === "1"
   const already = sp.already === "1"
+
+  // Auth: either a valid admin session cookie OR a matching adminToken in URL
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
+  const hasSession = await isSessionValid(sessionCookie)
 
   if (error) {
     return (
@@ -47,7 +54,8 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   })
 
   if (!booking) notFound()
-  if (!token || booking.adminToken !== token) {
+  const tokenMatches = token && booking.adminToken === token
+  if (!hasSession && !tokenMatches) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-20">
         <div className="rounded-lg border border-danger/40 bg-danger/5 p-6 text-center">
@@ -55,7 +63,15 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           <h1 className="font-display text-2xl tracking-wider text-danger">
             ACESSO NEGADO
           </h1>
-          <p className="mt-3 text-muted">Token inválido.</p>
+          <p className="mt-3 text-muted">
+            Token inválido ou sessão expirada. Faz login.
+          </p>
+          <Link
+            href={`/admin/login?next=${encodeURIComponent(`/admin/booking/${id}`)}`}
+            className="mt-6 inline-block btn-gold rounded-md px-6 py-2.5"
+          >
+            Login
+          </Link>
         </div>
       </main>
     )
@@ -120,8 +136,26 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             icon={<Clock className="h-6 w-6" />}
             tone="muted"
             title="MARCAÇÃO PENDENTE"
-            body="Confirma ou cancela através do email que recebeste."
+            body="Confirma ou cancela usando os botões abaixo."
           />
+        )}
+
+        {/* Inline action buttons — only when still pending */}
+        {isPending && !confirmed && !rejected && (
+          <div className="my-5 flex flex-col sm:flex-row gap-2">
+            <a
+              href={`/api/admin/bookings/${booking.id}/confirm?token=${booking.adminToken}`}
+              className="rounded-md bg-success px-6 py-2.5 font-semibold text-black hover:brightness-110 transition text-center"
+            >
+              ✓ Confirmar
+            </a>
+            <a
+              href={`/api/admin/bookings/${booking.id}/reject?token=${booking.adminToken}`}
+              className="rounded-md bg-danger px-6 py-2.5 font-semibold text-white hover:brightness-110 transition text-center"
+            >
+              ✗ Cancelar
+            </a>
+          </div>
         )}
 
         <h1 className="font-display text-2xl sm:text-3xl tracking-[0.06em] text-gold mt-2">
