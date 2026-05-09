@@ -22,6 +22,7 @@ model Client {
   name          String
   // Phone in E.164 format without "+" (e.g., 351912345678) — used for wa.me links and dedupe
   phone         String    @unique
+  email         String?
   loyaltyCount  Int       @default(0) // increments on COMPLETED, every 6th = free
   createdAt     DateTime  @default(now())
   bookings      Booking[]
@@ -34,6 +35,9 @@ model Booking {
   clientId     String
   client       Client    @relation(fields: [clientId], references: [id])
 
+  // Snapshot of customer email at booking time (Client.email may change later)
+  email        String?
+
   serviceId    String    // matches id from src/lib/services.ts
   serviceName  String    // denormalized snapshot in case the service changes/is removed
   servicePrice Float     // denormalized in cents-equivalent (Float OK for 2dp money at this scale)
@@ -45,6 +49,14 @@ model Booking {
   endUtc       DateTime  // ALWAYS UTC
 
   status       String    @default("PENDING") // PENDING | CONFIRMED | CANCELLED | COMPLETED
+
+  // Tokens for email-action links. adminToken used in admin email confirm/reject buttons;
+  // clientToken used in customer email "view your booking" link.
+  adminToken   String    @unique @default(cuid())
+  clientToken  String    @unique @default(cuid())
+
+  confirmedAt  DateTime?
+  cancelledAt  DateTime?
 
   // Google Calendar event id (set after successful GCal insert; null if pending or GCal write failed)
   gcalEventId  String?

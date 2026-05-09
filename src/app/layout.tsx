@@ -31,7 +31,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteHeader />
-        <div className="flex-1">{children}</div>
+        {/* min-h-[100vh] forces page content to fill viewport so the policies/footer
+            section requires a deliberate scroll, even on tall monitors */}
+        <div className="flex-1 min-h-[100vh]">{children}</div>
         <SiteFooter />
       </body>
     </html>

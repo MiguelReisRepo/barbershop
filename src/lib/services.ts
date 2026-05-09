@@ -27,7 +27,7 @@ export const SERVICES: readonly ServiceItem[] = [
   {
     id: "barba",
     name: "Barba",
-    description: "Aparar, desenhar e finalizar com toalha quente.",
+    description: "Aparar, desenhar e finalizar com precisão.",
     priceEur: 5,
     durationMin: 30,
   },

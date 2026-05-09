@@ -44,11 +44,13 @@ interface BookingState {
   slotIso?: string
   name?: string
   phone?: string
+  email?: string
   notes?: string
 }
 
 interface SuccessPayload {
   bookingId: string
+  clientToken: string
   whenLocal: string
   serviceName: string
   priceEur: number
@@ -162,6 +164,7 @@ function MarcarFlow() {
                 location={state.location}
                 date={state.date}
                 onBack={() => setStep("date")}
+                onChangeLocation={() => setStep("location")}
                 onPick={(slotIso) => {
                   setState((s) => ({ ...s, slotIso }))
                   setStep("details")
@@ -174,6 +177,7 @@ function MarcarFlow() {
               initial={{
                 name: state.name ?? "",
                 phone: state.phone ?? "",
+                email: state.email ?? "",
                 notes: state.notes ?? "",
               }}
               onBack={() => setStep("slot")}
@@ -430,12 +434,14 @@ function SlotStep({
   date,
   onPick,
   onBack,
+  onChangeLocation,
 }: {
   services: ServiceId[]
   location: LocationId
   date: string
   onPick: (slotIso: string) => void
   onBack: () => void
+  onChangeLocation: () => void
 }) {
   const [slots, setSlots] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -461,6 +467,14 @@ function SlotStep({
     }
   }, [location, services, date])
 
+  const locationName = location === "lisboa" ? "Lisboa" : "Setúbal"
+  const otherLocation = location === "lisboa" ? "setubal" : "lisboa"
+  const otherLocationName = otherLocation === "lisboa" ? "Lisboa" : "Setúbal"
+  const dateFormatted = formatLisbon(
+    new Date(`${date}T12:00:00Z`),
+    "EEEE, dd 'de' MMMM",
+  )
+
   return (
     <div>
       <BackButton onClick={onBack} />
@@ -471,11 +485,36 @@ function SlotStep({
         <div className="text-muted">A carregar horários…</div>
       )}
       {error && <div className="text-danger text-sm">Erro: {error}</div>}
+
       {slots && slots.length === 0 && (
-        <div className="rounded-md border border-border bg-background p-4 text-muted">
-          Nenhum horário disponível neste dia. Volta atrás e escolhe outra data.
+        <div className="rounded-lg border border-border bg-background p-5">
+          <p className="font-display text-lg text-gold mb-2">
+            Sem horários disponíveis
+          </p>
+          <p className="text-sm text-foreground/80">
+            <strong>{locationName}</strong> não tem nenhum horário livre em{" "}
+            <strong>{dateFormatted}</strong> que encaixe na duração do serviço
+            que escolheste. Pode estar fechado neste dia, ou os horários já
+            estão ocupados.
+          </p>
+          <p className="text-sm text-muted mt-3">Sugestões:</p>
+          <div className="mt-3 flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={onBack}
+              className="rounded-md border border-border bg-background-elevated px-4 py-2 text-sm hover:border-gold hover:text-gold transition"
+            >
+              Tentar outra data
+            </button>
+            <button
+              onClick={onChangeLocation}
+              className="rounded-md border border-border bg-background-elevated px-4 py-2 text-sm hover:border-gold hover:text-gold transition"
+            >
+              Tentar em {otherLocationName}
+            </button>
+          </div>
         </div>
       )}
+
       {slots && slots.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {slots.map((iso) => (
@@ -499,24 +538,34 @@ function DetailsStep({
   onSubmit,
   onBack,
 }: {
-  initial: { name: string; phone: string; notes: string }
-  onSubmit: (data: { name: string; phone: string; notes?: string }) => void
+  initial: { name: string; phone: string; email: string; notes: string }
+  onSubmit: (data: {
+    name: string
+    phone: string
+    email: string
+    notes?: string
+  }) => void
   onBack: () => void
 }) {
   const [name, setName] = useState(initial.name)
   const [phone, setPhone] = useState(initial.phone)
+  const [email, setEmail] = useState(initial.email)
   const [notes, setNotes] = useState(initial.notes)
   const [err, setErr] = useState<string | null>(null)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const cleanPhone = phone.replace(/[^\d]/g, "")
+    const cleanEmail = email.trim()
     if (name.trim().length < 2) return setErr("Nome demasiado curto")
     if (!/^\d{9,15}$/.test(cleanPhone))
       return setErr("Telefone inválido (9-15 dígitos, sem +)")
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail))
+      return setErr("Email inválido")
     onSubmit({
       name: name.trim(),
       phone: cleanPhone,
+      email: cleanEmail,
       notes: notes.trim() || undefined,
     })
   }
@@ -542,6 +591,17 @@ function DetailsStep({
             required
             inputMode="tel"
             placeholder="351912345678"
+            className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-gold focus:outline-none"
+          />
+        </Field>
+        <Field label="Email (para confirmação)">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            inputMode="email"
+            placeholder="joao@exemplo.com"
             className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-gold focus:outline-none"
           />
         </Field>
@@ -595,7 +655,11 @@ function ConfirmStep({
           location: state.location,
           services: state.services,
           startUtcIso: state.slotIso,
-          client: { name: state.name, phone: state.phone },
+          client: {
+            name: state.name,
+            phone: state.phone,
+            email: state.email,
+          },
           notes: state.notes || undefined,
         }),
       })
@@ -603,6 +667,7 @@ function ConfirmStep({
       if (!res.ok) throw new Error(json.error || "Erro desconhecido")
       onSuccess({
         bookingId: json.booking.id,
+        clientToken: json.booking.clientToken,
         whenLocal: json.booking.whenLocal,
         serviceName: json.booking.service,
         priceEur: json.booking.priceEur,
@@ -630,6 +695,7 @@ function ConfirmStep({
         <Row label="Preço" value={formatPrice(combo.priceEur)} />
         <Row label="Quando" value={whenLocal} />
         <Row label="Cliente" value={`${state.name} · ${state.phone}`} />
+        <Row label="Email" value={state.email} />
         {state.notes && <Row label="Notas" value={state.notes} />}
       </div>
       <p className="mt-4 text-sm text-muted">
@@ -662,9 +728,7 @@ function SuccessStep({
   onReset: () => void
 }) {
   const shopPhone = process.env.NEXT_PUBLIC_SHOP_PHONE
-  const waText = encodeURIComponent(
-    `Olá! Acabei de marcar: ${payload.serviceName} - ${payload.whenLocal} (${payload.location === "lisboa" ? "Lisboa" : "Setúbal"}). ID: ${payload.bookingId}`,
-  )
+  const viewUrl = `/marcacao/${payload.bookingId}?token=${payload.clientToken}`
   return (
     <div className="text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold">
@@ -679,20 +743,28 @@ function SuccessStep({
         {payload.location === "lisboa" ? "Lisboa" : "Setúbal"}
       </p>
       <p className="mt-5 text-sm text-muted">
-        Status: <span className="text-gold">PENDENTE</span> — receberás
-        confirmação em breve.
+        Status: <span className="text-gold">PENDENTE</span> — vais receber um
+        email com a confirmação assim que o barbeiro a aprovar.
       </p>
 
-      {shopPhone && (
+      <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
         <a
-          href={`https://wa.me/${shopPhone}?text=${waText}`}
-          target="_blank"
-          rel="noopener"
-          className="mt-6 inline-block rounded-md bg-[#25D366] px-6 py-2.5 font-semibold text-black hover:brightness-110 transition"
+          href={viewUrl}
+          className="rounded-md border border-gold/40 px-6 py-2.5 text-gold hover:bg-gold/10 transition"
         >
-          Falar no WhatsApp
+          Ver detalhes da marcação
         </a>
-      )}
+        {shopPhone && (
+          <a
+            href={`https://wa.me/${shopPhone}`}
+            target="_blank"
+            rel="noopener"
+            className="rounded-md bg-[#25D366] px-6 py-2.5 font-semibold text-black hover:brightness-110 transition"
+          >
+            Falar no WhatsApp
+          </a>
+        )}
+      </div>
 
       <div className="mt-6">
         <button
