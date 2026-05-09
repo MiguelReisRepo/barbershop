@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { AlertTriangle, CreditCard, Award } from "lucide-react"
+import { AlertTriangle, CreditCard, Award, XCircle } from "lucide-react"
 
 /**
  * Bottom of every page: Políticas section (cream) + footer.
@@ -30,11 +30,16 @@ function PoliciesSection() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
           <PolicyCard
             icon={<AlertTriangle className="h-5 w-5" />}
             title="ATRASOS"
             body="Em caso de atraso superior a 20 minutos, a marcação poderá ser cancelada para preservar o horário dos clientes seguintes."
+          />
+          <PolicyCard
+            icon={<XCircle className="h-5 w-5" />}
+            title="CANCELAMENTO"
+            body="Cancela com pelo menos 12 horas de antecedência através do link no email de confirmação. Cancelamentos tardios e faltas repetidas podem afetar marcações futuras."
           />
           <PolicyCard
             icon={<CreditCard className="h-5 w-5" />}

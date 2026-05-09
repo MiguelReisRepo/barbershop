@@ -56,6 +56,8 @@ export async function GET(
           updated.startUtc,
           "EEEE, dd 'de' MMMM 'às' HH:mm",
         ),
+        startUtc: updated.startUtc,
+        endUtc: updated.endUtc,
         notes: updated.notes,
         adminToken: updated.adminToken,
         clientToken: updated.clientToken,

@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
       priceEur: combo.priceEur,
       location: locationPretty,
       whenLocal,
+      startUtc,
+      endUtc,
       notes: notes ?? null,
       adminToken: booking.adminToken,
       clientToken: booking.clientToken,

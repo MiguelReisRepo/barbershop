@@ -55,8 +55,9 @@ model Booking {
   adminToken   String    @unique @default(cuid())
   clientToken  String    @unique @default(cuid())
 
-  confirmedAt  DateTime?
-  cancelledAt  DateTime?
+  confirmedAt    DateTime?
+  cancelledAt    DateTime?
+  reminderSentAt DateTime?
 
   // Google Calendar event id (set after successful GCal insert; null if pending or GCal write failed)
   gcalEventId  String?
