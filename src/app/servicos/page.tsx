@@ -16,6 +16,7 @@ import {
   buildCombo,
   validateSelection,
   formatPrice,
+  marginalPrice,
   type ServiceId,
 } from "@/lib/services"
 import { cn } from "@/lib/utils"
@@ -83,6 +84,13 @@ export default function ServicosPage() {
               const conflictReverse =
                 s.id === "corte" && selected.has("alinhamento")
 
+              const marginal = marginalPrice(
+                [...selected],
+                s.id as ServiceId,
+              )
+              const hasDiscount =
+                !isSelected && !conflict && marginal < s.priceEur - 0.01
+
               return (
                 <button
                   key={s.id}
@@ -118,11 +126,22 @@ export default function ServicosPage() {
 
                   <div className="mt-4 flex items-baseline justify-between">
                     <span className="text-xs text-muted">
-                      {s.durationMin} min · individual
+                      {s.durationMin} min{hasDiscount ? " · com combo" : " · individual"}
                     </span>
-                    <span className="font-display text-lg text-gold">
-                      {formatPrice(s.priceEur)}
-                    </span>
+                    {hasDiscount ? (
+                      <span className="inline-flex items-baseline gap-2">
+                        <span className="text-sm text-muted line-through">
+                          {formatPrice(s.priceEur)}
+                        </span>
+                        <span className="font-display text-lg text-gold">
+                          {formatPrice(marginal)}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="font-display text-lg text-gold">
+                        {formatPrice(s.priceEur)}
+                      </span>
+                    )}
                   </div>
                 </button>
               )

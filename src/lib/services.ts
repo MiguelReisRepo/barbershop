@@ -138,6 +138,32 @@ export function formatPrice(priceEur: number): string {
   return priceEur.toFixed(2).replace(".", ",") + " €"
 }
 
+/**
+ * Marginal cost of adding `candidateId` to the current selection.
+ *
+ * Used by the services UI to show a discounted addon price (e.g., "Barba 5€"
+ * becomes "2,50€" after the customer picks "Corte"). Returns the listed
+ * price unchanged when the candidate is already selected, when adding it
+ * would create an invalid combo, or when the resulting combo has no discount.
+ */
+export function marginalPrice(
+  currentIds: readonly ServiceId[],
+  candidateId: ServiceId,
+): number {
+  const candidate = getServiceItem(candidateId)
+  if (!candidate) return 0
+
+  const current = [...currentIds].filter((id) => id !== candidateId)
+  if (current.length === 0) return candidate.priceEur
+
+  const next = [...current, candidateId]
+  if (!validateSelection(next).ok) return candidate.priceEur
+
+  const currentCombo = buildCombo(current)
+  const nextCombo = buildCombo(next)
+  return nextCombo.priceEur - currentCombo.priceEur
+}
+
 /** Parse comma-separated services from a query param, e.g. "corte,barba" */
 export function parseServicesParam(raw: string | null | undefined): string[] {
   if (!raw) return []

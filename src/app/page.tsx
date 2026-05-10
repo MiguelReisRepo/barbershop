@@ -1,12 +1,14 @@
 import Link from "next/link"
 import { ChevronRight, MapPin, Clock, Award } from "lucide-react"
 import { BackgroundLogo } from "@/components/BackgroundLogo"
+import { PoliciesSection } from "@/components/SiteFooter"
 
 export default function HomePage() {
   return (
     <>
       <Hero />
       <Pillars />
+      <PoliciesSection />
     </>
   )
 }

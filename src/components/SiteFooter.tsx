@@ -2,19 +2,15 @@ import Image from "next/image"
 import { AlertTriangle, CreditCard, Award, XCircle } from "lucide-react"
 
 /**
- * Bottom of every page: Políticas section (cream) + footer.
- * Render once in the root layout.
+ * Slim footer rendered on every page (logo + copyright).
+ * Note: the cream "Políticas da Casa" block lives in `PoliciesSection` and is
+ * only rendered on the homepage — other routes don't need to repeat it.
  */
 export function SiteFooter() {
-  return (
-    <>
-      <PoliciesSection />
-      <Footer />
-    </>
-  )
+  return <Footer />
 }
 
-function PoliciesSection() {
+export function PoliciesSection() {
   return (
     <section className="section-cream border-y border-cream-border">
       <div className="mx-auto max-w-6xl px-4 py-16">
