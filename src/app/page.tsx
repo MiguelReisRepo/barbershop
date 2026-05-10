@@ -68,7 +68,7 @@ function Pillars() {
         <Pillar
           icon={<Award className="h-6 w-6" />}
           title="CARTÃO FIDELIDADE"
-          body="Cartão entregue na primeira visita. Ao sexto corte, oferta total."
+          body="Cartão entregue na primeira visita. Ao sexto corte, ganhas um totalmente gratuito!"
         />
       </div>
     </section>
