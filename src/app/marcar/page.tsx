@@ -790,6 +790,12 @@ function SuccessStep({
         Status: <span className="text-gold">PENDENTE</span> — vais receber um
         email com a confirmação assim que o barbeiro a aprovar.
       </p>
+      <p className="mt-3 text-xs text-muted/80">
+        Não vês o email passados alguns minutos? Verifica a pasta de{" "}
+        <strong className="text-foreground/90">spam / lixo eletrónico</strong>{" "}
+        e marca como &ldquo;Não é spam&rdquo; para garantir que recebes os
+        próximos.
+      </p>
 
       <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
         <a
