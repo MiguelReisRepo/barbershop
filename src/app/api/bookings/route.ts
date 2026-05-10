@@ -5,7 +5,12 @@ import { prisma } from "@/lib/prisma"
 import { buildCombo, validateSelection } from "@/lib/services"
 import { createEvent } from "@/lib/gcal"
 import { formatLisbon } from "@/lib/tz"
-import { sendEmail, adminBookingEmail, ADMIN_EMAIL } from "@/lib/email"
+import {
+  sendEmail,
+  adminBookingEmail,
+  clientReceivedEmail,
+  ADMIN_EMAIL,
+} from "@/lib/email"
 
 const bodySchema = z.object({
   location: z.enum(["lisboa", "setubal"]),
@@ -117,6 +122,29 @@ export async function POST(req: NextRequest) {
     await sendEmail({ to: ADMIN_EMAIL, subject: tpl.subject, html: tpl.html })
   } catch (e) {
     console.error("[bookings] admin email failed:", e)
+  }
+
+  // Send "we received your booking" email to the client (best effort)
+  try {
+    const tpl = clientReceivedEmail({
+      id: booking.id,
+      clientName: client.name,
+      clientPhone: client.phone,
+      clientEmail: client.email,
+      serviceName: combo.name,
+      durationMin: combo.durationMin,
+      priceEur: combo.priceEur,
+      location: locationPretty,
+      whenLocal,
+      startUtc,
+      endUtc,
+      notes: notes ?? null,
+      adminToken: booking.adminToken,
+      clientToken: booking.clientToken,
+    })
+    await sendEmail({ to: client.email, subject: tpl.subject, html: tpl.html })
+  } catch (e) {
+    console.error("[bookings] client received email failed:", e)
   }
 
   // Best-effort GCal sync

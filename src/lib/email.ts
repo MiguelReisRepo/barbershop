@@ -88,6 +88,20 @@ function escape(s: string | null | undefined): string {
     .replace(/'/g, "&#39;")
 }
 
+/**
+ * Returns an HTML <a> tag for "Falar no WhatsApp" if NEXT_PUBLIC_SHOP_PHONE
+ * is configured. Returns empty string otherwise — caller can interpolate
+ * unconditionally.
+ */
+function whatsappButtonHtml(prefilledMessage?: string): string {
+  const phone = process.env.NEXT_PUBLIC_SHOP_PHONE
+  if (!phone) return ""
+  const url = prefilledMessage
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(prefilledMessage)}`
+    : `https://wa.me/${phone}`
+  return `<a href="${url}" target="_blank" style="display:inline-block;background:#25D366;color:#0a3d2c;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:700;margin:4px;">💬 Falar no WhatsApp</a>`
+}
+
 // ---------- Email templates ----------
 
 export interface BookingForEmail {
@@ -160,6 +174,57 @@ export function adminBookingEmail(booking: BookingForEmail): {
   return { subject, html }
 }
 
+/**
+ * Email sent to the customer right after they create a booking (status PENDING).
+ * Confirms the booking is being reviewed by the barber and gives the customer
+ * a way to track its status (private link) or follow up directly (WhatsApp).
+ */
+export function clientReceivedEmail(booking: BookingForEmail): {
+  subject: string
+  html: string
+} {
+  const site = getSiteUrl()
+  const statusUrl = `${site}/marcacao/${booking.id}?token=${booking.clientToken}`
+  const waMessage = `Olá! Fiz uma marcação para ${booking.serviceName} no dia ${booking.whenLocal}, em ${booking.location}. Obrigado!`
+  const waButton = whatsappButtonHtml(waMessage)
+
+  const subject = `Recebemos a tua marcação — Tarzan's Barbershop`
+  const html = `<!DOCTYPE html>
+<html><body style="${baseStyle}">
+  <div style="max-width:600px;margin:0 auto;">
+    ${headerHtml}
+    <div style="background:white;padding:32px 28px;border-radius:0 0 8px 8px;">
+      <p style="margin:0 0 12px 0;font-size:16px;">Olá, <strong>${escape(booking.clientName)}</strong>!</p>
+      <p style="margin:0 0 12px 0;font-size:16px;">Recebemos a tua marcação. Está agora a aguardar confirmação do barbeiro — vais receber outro email assim que ele aprovar (normalmente dentro de algumas horas).</p>
+
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;">
+        <tr><td style="padding:8px 0;color:#666;width:35%;">Serviço</td><td style="padding:8px 0;font-weight:600;">${booking.serviceName}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Quando</td><td style="padding:8px 0;font-weight:600;">${booking.whenLocal}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Localização</td><td style="padding:8px 0;">${booking.location}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Duração</td><td style="padding:8px 0;">${booking.durationMin} min</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Preço</td><td style="padding:8px 0;">${priceFormat(booking.priceEur)}</td></tr>
+      </table>
+
+      <p style="margin:0 0 8px 0;font-size:14px;color:#666;">Status atual: <strong style="color:#c79c0e;">PENDENTE</strong></p>
+
+      <div style="text-align:center;margin-top:24px;">
+        <a href="${statusUrl}" style="display:inline-block;background:#1a1411;color:#f5c518;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;margin:4px;">Ver estado da marcação</a>
+        ${waButton ? `<br>${waButton}` : ""}
+      </div>
+
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid #eee;font-size:12px;color:#999;line-height:1.6;">
+        Guarda este email — o link acima permite-te acompanhar o estado da marcação a qualquer altura. Se este email tiver chegado ao spam, marca como &ldquo;não é spam&rdquo; para garantir que recebes os próximos.
+      </div>
+    </div>
+
+    <div style="text-align:center;color:#999;font-size:12px;margin-top:14px;">
+      Tarzan's Barbershop · Lisboa &amp; Setúbal
+    </div>
+  </div>
+</body></html>`
+  return { subject, html }
+}
+
 /** Email sent to the customer once the barber has confirmed */
 export function clientConfirmedEmail(booking: BookingForEmail): {
   subject: string
@@ -190,6 +255,7 @@ export function clientConfirmedEmail(booking: BookingForEmail): {
 
       <div style="text-align:center;">
         <a href="${gcalUrl}" target="_blank" style="display:inline-block;background:#1a73e8;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;margin:4px;">📅 Adicionar ao Google Calendar</a>
+        ${whatsappButtonHtml() ? `<br>${whatsappButtonHtml()}` : ""}
         <br>
         <a href="${cancelUrl}" style="display:inline-block;background:transparent;color:#c1272d;text-decoration:none;padding:10px 20px;border:1px solid #c1272d;border-radius:6px;font-weight:600;margin:8px 4px;">✗ Cancelar marcação</a>
       </div>
@@ -240,6 +306,7 @@ export function clientReminderEmail(booking: BookingForEmail): {
 
       <div style="text-align:center;">
         <a href="${gcalUrl}" target="_blank" style="display:inline-block;background:#1a73e8;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;margin:4px;">📅 Adicionar ao Google Calendar</a>
+        ${whatsappButtonHtml() ? `<br>${whatsappButtonHtml()}` : ""}
         <br>
         <a href="${cancelUrl}" style="display:inline-block;background:transparent;color:#c1272d;text-decoration:none;padding:10px 20px;border:1px solid #c1272d;border-radius:6px;font-weight:600;margin:8px 4px;">✗ Cancelar marcação</a>
       </div>
@@ -272,6 +339,9 @@ export function clientCancelledEmail(booking: BookingForEmail): {
       <li>${booking.location}</li>
     </ul>
     <p>Pode fazer nova marcação em qualquer altura no nosso site.</p>
+    ${whatsappButtonHtml()
+      ? `<div style="text-align:center;margin:20px 0;">${whatsappButtonHtml()}</div>`
+      : ""}
     <div style="text-align:center;color:#999;font-size:12px;margin-top:20px;">
       Tarzan's Barbershop · Lisboa &amp; Setúbal
     </div>

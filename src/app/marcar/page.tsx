@@ -787,8 +787,9 @@ function SuccessStep({
         {payload.location === "lisboa" ? "Lisboa" : "Setúbal"}
       </p>
       <p className="mt-5 text-sm text-muted">
-        Status: <span className="text-gold">PENDENTE</span> — vais receber um
-        email com a confirmação assim que o barbeiro a aprovar.
+        Status: <span className="text-gold">PENDENTE</span> — já te enviámos um
+        email com os detalhes e vais receber outro assim que o barbeiro a
+        aprovar.
       </p>
       <p className="mt-3 text-xs text-muted/80">
         Não vês o email passados alguns minutos? Verifica a pasta de{" "}
