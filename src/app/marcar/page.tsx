@@ -26,6 +26,7 @@ import {
   buildCombo,
   validateSelection,
   formatPrice,
+  marginalPrice,
   parseServicesParam,
   type ServiceId,
   type Combo,
@@ -275,6 +276,12 @@ function ServicesStep({
       <div className="grid sm:grid-cols-2 gap-3">
         {SERVICES.map((s) => {
           const isSelected = selected.has(s.id as ServiceId)
+          const conflict =
+            s.id === "alinhamento" && selected.has("corte")
+          const marginal = marginalPrice([...selected], s.id as ServiceId)
+          const hasDiscount =
+            !isSelected && !conflict && marginal < s.priceEur - 0.01
+
           return (
             <button
               key={s.id}
@@ -302,10 +309,23 @@ function ServicesStep({
                 {s.description}
               </div>
               <div className="mt-3 flex items-baseline justify-between text-sm">
-                <span className="text-muted">{s.durationMin} min</span>
-                <span className="font-display text-gold">
-                  {formatPrice(s.priceEur)}
+                <span className="text-muted">
+                  {s.durationMin} min{hasDiscount ? " · com combo" : ""}
                 </span>
+                {hasDiscount ? (
+                  <span className="inline-flex items-baseline gap-2">
+                    <span className="text-xs text-muted line-through">
+                      {formatPrice(s.priceEur)}
+                    </span>
+                    <span className="font-display text-gold">
+                      {formatPrice(marginal)}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="font-display text-gold">
+                    {formatPrice(s.priceEur)}
+                  </span>
+                )}
               </div>
             </button>
           )
