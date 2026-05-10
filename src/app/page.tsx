@@ -63,7 +63,7 @@ function Pillars() {
         <Pillar
           icon={<Clock className="h-6 w-6" />}
           title="MARCAÇÃO IMEDIATA"
-          body="Agenda online disponível a qualquer hora, com confirmação automática por WhatsApp."
+          body="Agenda online disponível a qualquer hora, com confirmação automática por email."
         />
         <Pillar
           icon={<Award className="h-6 w-6" />}
