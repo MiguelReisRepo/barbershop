@@ -140,7 +140,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           />
         )}
 
-        {/* Inline action buttons — only when still pending */}
+        {/* Inline action buttons */}
         {isPending && !confirmed && !rejected && (
           <div className="my-5 flex flex-col sm:flex-row gap-2">
             <a
@@ -154,6 +154,16 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
               className="rounded-md bg-danger px-6 py-2.5 font-semibold text-white hover:brightness-110 transition text-center"
             >
               ✗ Cancelar
+            </a>
+          </div>
+        )}
+        {isConfirmed && !confirmed && !rejected && (
+          <div className="my-5">
+            <a
+              href={`/api/admin/bookings/${booking.id}/reject?token=${booking.adminToken}&from=admin`}
+              className="inline-block rounded-md border border-danger/40 bg-danger/5 px-6 py-2.5 font-semibold text-danger hover:bg-danger/10 transition text-center"
+            >
+              ✗ Cancelar marcação
             </a>
           </div>
         )}

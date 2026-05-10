@@ -7,11 +7,13 @@ import {
   LogOut,
   MapPin,
   AlertCircle,
+  BarChart3,
 } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import type { Prisma } from "@/generated/prisma"
+import { DeleteCancelledButton } from "./_components/DeleteCancelledButton"
 
 export const dynamic = "force-dynamic"
 
@@ -58,10 +60,12 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
     where.startUtc = { gte: now, lt: end }
   }
 
+  // COMPLETED gets descending order (most recent first) and is rendered grouped
+  // by month. Everything else stays ascending (next-up first).
   const bookings = await prisma.booking.findMany({
     where,
     include: { client: true },
-    orderBy: { startUtc: "asc" },
+    orderBy: { startUtc: status === "COMPLETED" ? "desc" : "asc" },
     take: 200,
   })
 
@@ -79,12 +83,20 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         <h1 className="font-display text-3xl tracking-[0.06em] text-gold">
           ADMIN
         </h1>
-        <a
-          href="/api/admin/auth/logout"
-          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-gold transition"
-        >
-          <LogOut className="h-4 w-4" /> Sair
-        </a>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm text-foreground/80 hover:text-gold transition"
+          >
+            <BarChart3 className="h-4 w-4" /> Dashboard
+          </Link>
+          <a
+            href="/api/admin/auth/logout"
+            className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-gold transition"
+          >
+            <LogOut className="h-4 w-4" /> Sair
+          </a>
+        </div>
       </div>
 
       {/* Flash banner from confirm/reject actions */}
@@ -141,84 +153,149 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      {/* Bulk delete: only when filter = CANCELLED */}
+      {status === "CANCELLED" && (
+        <div className="mb-4 flex justify-end">
+          <DeleteCancelledButton count={countByStatus["CANCELLED"] ?? 0} />
+        </div>
+      )}
+
       {/* Bookings list */}
       {bookings.length === 0 ? (
         <div className="rounded-lg border border-border bg-background-elevated p-10 text-center">
           <AlertCircle className="h-8 w-8 text-muted mx-auto mb-3" />
           <p className="text-muted">Nenhuma marcação corresponde aos filtros.</p>
         </div>
+      ) : status === "COMPLETED" ? (
+        <CompletedByMonth bookings={bookings} />
       ) : (
         <div className="space-y-2">
           {bookings.map((b) => (
-            <div
-              key={b.id}
-              className="card-lift rounded-lg border border-border bg-background-elevated p-4"
-            >
-              <Link
-                href={`/admin/booking/${b.id}?token=${b.adminToken}`}
-                className="block hover:opacity-95 transition"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <StatusPill status={b.status} />
-                      <span className="font-display text-lg tracking-wider text-gold">
-                        {b.serviceName}
-                      </span>
-                      <span className="text-muted text-sm">·</span>
-                      <span className="inline-flex items-center gap-1 text-sm text-muted">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {b.location === "lisboa" ? "Lisboa" : "Setúbal"}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-sm">
-                      <span className="text-foreground">
-                        {formatLisbon(
-                          b.startUtc,
-                          "EEE, dd/MM/yyyy 'às' HH:mm",
-                        )}
-                      </span>
-                      <span className="text-muted">
-                        {" "}· {b.durationMin} min · {formatPrice(b.servicePrice)}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-sm text-muted">
-                      {b.client.name} · +{b.client.phone}
-                      {b.email && <> · {b.email}</>}
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted whitespace-nowrap">
-                    {b.client.loyaltyCount > 0 && (
-                      <span className="inline-flex items-center gap-1">
-                        <Award className="h-3 w-3 text-gold" />
-                        {b.client.loyaltyCount} cortes
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-
-              {b.status === "PENDING" && (
-                <div className="mt-3 pt-3 border-t border-border flex gap-2">
-                  <a
-                    href={`/api/admin/bookings/${b.id}/confirm?token=${b.adminToken}&from=admin`}
-                    className="flex-1 rounded-md bg-success px-4 py-2 font-semibold text-black text-center text-sm hover:brightness-110 transition"
-                  >
-                    ✓ Confirmar
-                  </a>
-                  <a
-                    href={`/api/admin/bookings/${b.id}/reject?token=${b.adminToken}&from=admin`}
-                    className="flex-1 rounded-md bg-danger px-4 py-2 font-semibold text-white text-center text-sm hover:brightness-110 transition"
-                  >
-                    ✗ Cancelar
-                  </a>
-                </div>
-              )}
-            </div>
+            <BookingCard key={b.id} b={b} />
           ))}
         </div>
       )}
     </main>
+  )
+}
+
+type BookingWithClient = Prisma.BookingGetPayload<{ include: { client: true } }>
+
+function BookingCard({ b }: { b: BookingWithClient }) {
+  return (
+    <div className="card-lift rounded-lg border border-border bg-background-elevated p-4">
+      <Link
+        href={`/admin/booking/${b.id}?token=${b.adminToken}`}
+        className="block hover:opacity-95 transition"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusPill status={b.status} />
+              <span className="font-display text-lg tracking-wider text-gold">
+                {b.serviceName}
+              </span>
+              <span className="text-muted text-sm">·</span>
+              <span className="inline-flex items-center gap-1 text-sm text-muted">
+                <MapPin className="h-3.5 w-3.5" />
+                {b.location === "lisboa" ? "Lisboa" : "Setúbal"}
+              </span>
+            </div>
+            <div className="mt-1 text-sm">
+              <span className="text-foreground">
+                {formatLisbon(b.startUtc, "EEE, dd/MM/yyyy 'às' HH:mm")}
+              </span>
+              <span className="text-muted">
+                {" "}· {b.durationMin} min · {formatPrice(b.servicePrice)}
+              </span>
+            </div>
+            <div className="mt-1 text-sm text-muted">
+              {b.client.name} · +{b.client.phone}
+              {b.email && <> · {b.email}</>}
+            </div>
+          </div>
+          <div className="text-xs text-muted whitespace-nowrap">
+            {b.client.loyaltyCount > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <Award className="h-3 w-3 text-gold" />
+                {b.client.loyaltyCount} cortes
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+
+      {b.status === "PENDING" && (
+        <div className="mt-3 pt-3 border-t border-border flex gap-2">
+          <a
+            href={`/api/admin/bookings/${b.id}/confirm?token=${b.adminToken}&from=admin`}
+            className="flex-1 rounded-md bg-success px-4 py-2 font-semibold text-black text-center text-sm hover:brightness-110 transition"
+          >
+            ✓ Confirmar
+          </a>
+          <a
+            href={`/api/admin/bookings/${b.id}/reject?token=${b.adminToken}&from=admin`}
+            className="flex-1 rounded-md bg-danger px-4 py-2 font-semibold text-white text-center text-sm hover:brightness-110 transition"
+          >
+            ✗ Cancelar
+          </a>
+        </div>
+      )}
+
+      {b.status === "CONFIRMED" && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <a
+            href={`/api/admin/bookings/${b.id}/reject?token=${b.adminToken}&from=admin`}
+            className="block w-full rounded-md border border-danger/40 bg-danger/5 px-4 py-2 font-semibold text-danger text-center text-sm hover:bg-danger/10 transition"
+          >
+            ✗ Cancelar marcação
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CompletedByMonth({ bookings }: { bookings: BookingWithClient[] }) {
+  // Group by Lisbon-local YYYY-MM, preserving the desc order from the query.
+  const groups = new Map<string, BookingWithClient[]>()
+  for (const b of bookings) {
+    const key = formatLisbon(b.startUtc, "yyyy-MM")
+    const arr = groups.get(key) ?? []
+    arr.push(b)
+    groups.set(key, arr)
+  }
+
+  return (
+    <div className="space-y-8">
+      {Array.from(groups.entries()).map(([monthKey, items]) => {
+        const totalRevenue = items.reduce((s, b) => s + b.servicePrice, 0)
+        const monthLabel = formatLisbon(
+          items[0].startUtc,
+          "MMMM 'de' yyyy",
+        ).toUpperCase()
+        return (
+          <div key={monthKey}>
+            <div className="mb-3 flex items-end justify-between gap-3 border-b border-border pb-2">
+              <h2 className="font-display text-xl tracking-[0.1em] text-gold">
+                {monthLabel}
+              </h2>
+              <div className="text-xs text-muted">
+                {items.length} marcações ·{" "}
+                <span className="text-foreground">
+                  {formatPrice(totalRevenue)}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {items.map((b) => (
+                <BookingCard key={b.id} b={b} />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

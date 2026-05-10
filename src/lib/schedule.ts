@@ -56,3 +56,34 @@ export function getWorkingHours(
 export function getLocation(id: string): Location | undefined {
   return LOCATIONS.find((l) => l.id === id)
 }
+
+/** True if the location has working hours configured for that day of week. */
+export function isLocationOpenOn(
+  location: LocationId,
+  dayOfWeek: DayOfWeek,
+): boolean {
+  return SCHEDULE[location][dayOfWeek] != null
+}
+
+/**
+ * Given a `yyyymmdd` date and location, returns the YYYY-MM-DD of the next day
+ * (strictly after) when the location is open. Searches up to 14 days ahead;
+ * returns null if nothing found in that window.
+ */
+export function getNextOpenDate(
+  location: LocationId,
+  yyyymmdd: string,
+): string | null {
+  const [y, m, d] = yyyymmdd.split("-").map(Number)
+  for (let i = 1; i <= 14; i++) {
+    const probe = new Date(Date.UTC(y, m - 1, d + i))
+    const dow = probe.getUTCDay() as DayOfWeek
+    if (isLocationOpenOn(location, dow)) {
+      const yy = probe.getUTCFullYear()
+      const mm = String(probe.getUTCMonth() + 1).padStart(2, "0")
+      const dd = String(probe.getUTCDate()).padStart(2, "0")
+      return `${yy}-${mm}-${dd}`
+    }
+  }
+  return null
+}

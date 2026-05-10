@@ -49,7 +49,7 @@ function PoliciesSection() {
           <PolicyCard
             icon={<Award className="h-5 w-5" />}
             title="FIDELIZAÇÃO"
-            body="Cartão de fidelidade ativo: ao sexto corte, o cliente recebe um totalmente gratuito."
+            body="Na primeira visita recebes o cartão de fidelidade. Ao sexto corte, oferta total. Programa válido apenas para o primeiro cartão — uma vez completo, o agradecimento fica feito."
           />
         </div>
       </div>

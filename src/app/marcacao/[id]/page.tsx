@@ -53,6 +53,11 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
 
   const shopPhone = process.env.NEXT_PUBLIC_SHOP_PHONE
 
+  const whenForCopy = formatLisbon(
+    booking.startUtc,
+    "EEEE, dd 'de' MMMM 'às' HH:mm",
+  )
+
   return (
     <main className="mx-auto max-w-2xl px-4 py-16">
       <div className="text-center mb-8">
@@ -76,7 +81,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
         </h1>
         <p className="text-muted mt-3 text-sm">
           {isConfirmed &&
-            "O barbeiro confirmou — estás à espera dele à hora marcada."}
+            `Obrigado pela confiança! Esperamos por ti em ${whenForCopy}.`}
           {isPending &&
             "O barbeiro ainda não confirmou. Vais receber um email assim que o fizer."}
           {isCancelled &&

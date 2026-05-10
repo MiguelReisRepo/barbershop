@@ -15,7 +15,12 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react"
-import { LOCATIONS, type LocationId } from "@/lib/schedule"
+import {
+  LOCATIONS,
+  getNextOpenDate,
+  isLocationOpenOn,
+  type LocationId,
+} from "@/lib/schedule"
 import {
   SERVICES,
   buildCombo,
@@ -25,7 +30,7 @@ import {
   type ServiceId,
   type Combo,
 } from "@/lib/services"
-import { formatLisbon } from "@/lib/tz"
+import { formatLisbon, getLisbonDayOfWeek } from "@/lib/tz"
 import { cn } from "@/lib/utils"
 
 type Step =
@@ -165,6 +170,9 @@ function MarcarFlow() {
                 date={state.date}
                 onBack={() => setStep("date")}
                 onChangeLocation={() => setStep("location")}
+                onJumpToDate={(date) =>
+                  setState((s) => ({ ...s, date }))
+                }
                 onPick={(slotIso) => {
                   setState((s) => ({ ...s, slotIso }))
                   setStep("details")
@@ -435,6 +443,7 @@ function SlotStep({
   onPick,
   onBack,
   onChangeLocation,
+  onJumpToDate,
 }: {
   services: ServiceId[]
   location: LocationId
@@ -442,6 +451,7 @@ function SlotStep({
   onPick: (slotIso: string) => void
   onBack: () => void
   onChangeLocation: () => void
+  onJumpToDate: (date: string) => void
 }) {
   const [slots, setSlots] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -475,6 +485,20 @@ function SlotStep({
     "EEEE, dd 'de' MMMM",
   )
 
+  // Detect if the location is closed on the chosen day-of-week (so we can
+  // show a clearer message + suggest the next day this location actually opens).
+  const dow = getLisbonDayOfWeek(date)
+  const locationClosedThisDay = !isLocationOpenOn(location, dow)
+  const nextOpen = locationClosedThisDay
+    ? getNextOpenDate(location, date)
+    : null
+  const nextOpenFormatted = nextOpen
+    ? formatLisbon(
+        new Date(`${nextOpen}T12:00:00Z`),
+        "EEEE, dd 'de' MMMM",
+      )
+    : null
+
   return (
     <div>
       <BackButton onClick={onBack} />
@@ -491,14 +515,34 @@ function SlotStep({
           <p className="font-display text-lg text-gold mb-2">
             Sem horários disponíveis
           </p>
-          <p className="text-sm text-foreground/80">
-            <strong>{locationName}</strong> não tem nenhum horário livre em{" "}
-            <strong>{dateFormatted}</strong> que encaixe na duração do serviço
-            que escolheste. Pode estar fechado neste dia, ou os horários já
-            estão ocupados.
-          </p>
+          {locationClosedThisDay ? (
+            <p className="text-sm text-foreground/80">
+              Em <strong>{dateFormatted}</strong> não estamos em{" "}
+              <strong>{locationName}</strong>.{" "}
+              {nextOpenFormatted && (
+                <>
+                  A próxima data com {locationName} é{" "}
+                  <strong>{nextOpenFormatted}</strong>.
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-foreground/80">
+              <strong>{locationName}</strong> não tem horários livres em{" "}
+              <strong>{dateFormatted}</strong> — os slots desse dia já estão
+              ocupados ou não cabem na duração do serviço.
+            </p>
+          )}
           <p className="text-sm text-muted mt-3">Sugestões:</p>
-          <div className="mt-3 flex flex-col sm:flex-row gap-2">
+          <div className="mt-3 flex flex-col sm:flex-row gap-2 flex-wrap">
+            {nextOpen && nextOpenFormatted && (
+              <button
+                onClick={() => onJumpToDate(nextOpen)}
+                className="rounded-md bg-gold text-black px-4 py-2 text-sm font-semibold hover:brightness-110 transition"
+              >
+                Ver horários em {nextOpenFormatted}
+              </button>
+            )}
             <button
               onClick={onBack}
               className="rounded-md border border-border bg-background-elevated px-4 py-2 text-sm hover:border-gold hover:text-gold transition"

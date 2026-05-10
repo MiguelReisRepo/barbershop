@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation"
 import { Lock } from "lucide-react"
 
 interface PageProps {
@@ -67,8 +66,3 @@ export function generateMetadata() {
 
 // Avoid static export of this page so the form can post fresh every time.
 export const dynamic = "force-dynamic"
-
-// Helper for downstream pages — not used here directly but exported as a hint
-export async function _redirectIfLoggedIn(_: unknown) {
-  redirect("/admin")
-}
