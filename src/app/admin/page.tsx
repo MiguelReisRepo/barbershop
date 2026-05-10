@@ -26,6 +26,8 @@ interface PageProps {
     status?: string
     range?: string
     location?: string
+    flash?: string
+    code?: string
   }>
 }
 
@@ -34,6 +36,8 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
   const status = (sp.status as StatusFilter) ?? "PENDING"
   const range = (sp.range as RangeFilter) ?? "upcoming"
   const location = sp.location
+  const flash = sp.flash
+  const flashCode = sp.code
 
   const where: Prisma.BookingWhereInput = {}
   if (status !== "ALL") where.status = status
@@ -82,6 +86,9 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
           <LogOut className="h-4 w-4" /> Sair
         </a>
       </div>
+
+      {/* Flash banner from confirm/reject actions */}
+      {flash && <FlashBanner flash={flash} code={flashCode} />}
 
       {/* Filters */}
       <div className="rounded-lg border border-border bg-background-elevated p-4 mb-6">
@@ -143,50 +150,71 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
       ) : (
         <div className="space-y-2">
           {bookings.map((b) => (
-            <Link
+            <div
               key={b.id}
-              href={`/admin/booking/${b.id}?token=${b.adminToken}`}
-              className="card-lift block rounded-lg border border-border bg-background-elevated p-4"
+              className="card-lift rounded-lg border border-border bg-background-elevated p-4"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <StatusPill status={b.status} />
-                    <span className="font-display text-lg tracking-wider text-gold">
-                      {b.serviceName}
-                    </span>
-                    <span className="text-muted text-sm">·</span>
-                    <span className="inline-flex items-center gap-1 text-sm text-muted">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {b.location === "lisboa" ? "Lisboa" : "Setúbal"}
-                    </span>
+              <Link
+                href={`/admin/booking/${b.id}?token=${b.adminToken}`}
+                className="block hover:opacity-95 transition"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <StatusPill status={b.status} />
+                      <span className="font-display text-lg tracking-wider text-gold">
+                        {b.serviceName}
+                      </span>
+                      <span className="text-muted text-sm">·</span>
+                      <span className="inline-flex items-center gap-1 text-sm text-muted">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {b.location === "lisboa" ? "Lisboa" : "Setúbal"}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm">
+                      <span className="text-foreground">
+                        {formatLisbon(
+                          b.startUtc,
+                          "EEE, dd/MM/yyyy 'às' HH:mm",
+                        )}
+                      </span>
+                      <span className="text-muted">
+                        {" "}· {b.durationMin} min · {formatPrice(b.servicePrice)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm text-muted">
+                      {b.client.name} · +{b.client.phone}
+                      {b.email && <> · {b.email}</>}
+                    </div>
                   </div>
-                  <div className="mt-1 text-sm">
-                    <span className="text-foreground">
-                      {formatLisbon(
-                        b.startUtc,
-                        "EEE, dd/MM/yyyy 'às' HH:mm",
-                      )}
-                    </span>
-                    <span className="text-muted">
-                      {" "}· {b.durationMin} min · {formatPrice(b.servicePrice)}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-sm text-muted">
-                    {b.client.name} · +{b.client.phone}
-                    {b.email && <> · {b.email}</>}
+                  <div className="text-xs text-muted whitespace-nowrap">
+                    {b.client.loyaltyCount > 0 && (
+                      <span className="inline-flex items-center gap-1">
+                        <Award className="h-3 w-3 text-gold" />
+                        {b.client.loyaltyCount} cortes
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="text-xs text-muted whitespace-nowrap">
-                  {b.client.loyaltyCount > 0 && (
-                    <span className="inline-flex items-center gap-1">
-                      <Award className="h-3 w-3 text-gold" />
-                      {b.client.loyaltyCount} cortes
-                    </span>
-                  )}
+              </Link>
+
+              {b.status === "PENDING" && (
+                <div className="mt-3 pt-3 border-t border-border flex gap-2">
+                  <a
+                    href={`/api/admin/bookings/${b.id}/confirm?token=${b.adminToken}&from=admin`}
+                    className="flex-1 rounded-md bg-success px-4 py-2 font-semibold text-black text-center text-sm hover:brightness-110 transition"
+                  >
+                    ✓ Confirmar
+                  </a>
+                  <a
+                    href={`/api/admin/bookings/${b.id}/reject?token=${b.adminToken}&from=admin`}
+                    className="flex-1 rounded-md bg-danger px-4 py-2 font-semibold text-white text-center text-sm hover:brightness-110 transition"
+                  >
+                    ✗ Cancelar
+                  </a>
                 </div>
-              </div>
-            </Link>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -285,6 +313,48 @@ function FilterChip({
         </span>
       )}
     </Link>
+  )
+}
+
+function FlashBanner({ flash, code }: { flash: string; code?: string }) {
+  let tone: "success" | "danger" | "muted" = "muted"
+  let title = ""
+  let body = ""
+
+  if (flash === "confirmed") {
+    tone = "success"
+    title = "MARCAÇÃO CONFIRMADA"
+    body = "Cliente notificado por email."
+  } else if (flash === "cancelled") {
+    tone = "danger"
+    title = "MARCAÇÃO CANCELADA"
+    body = "Cliente notificado por email."
+  } else if (flash === "already-confirmed") {
+    title = "JÁ ESTAVA CONFIRMADA"
+    body = "Sem alterações."
+  } else if (flash === "already-cancelled") {
+    title = "JÁ ESTAVA CANCELADA"
+    body = "Sem alterações."
+  } else if (flash === "error") {
+    tone = "danger"
+    title = "ERRO"
+    body = code ? `Código: ${code}` : "Ocorreu um erro."
+  } else {
+    return null
+  }
+
+  const cls =
+    tone === "success"
+      ? "border-success/40 bg-success/5 text-success"
+      : tone === "danger"
+        ? "border-danger/40 bg-danger/5 text-danger"
+        : "border-border bg-background-elevated text-gold"
+
+  return (
+    <div className={`mb-6 rounded-lg border p-4 ${cls}`}>
+      <div className="font-display tracking-[0.1em] text-sm">{title}</div>
+      <div className="text-sm text-foreground/75 mt-1">{body}</div>
+    </div>
   )
 }
 

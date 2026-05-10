@@ -144,13 +144,13 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         {isPending && !confirmed && !rejected && (
           <div className="my-5 flex flex-col sm:flex-row gap-2">
             <a
-              href={`/api/admin/bookings/${booking.id}/confirm?token=${booking.adminToken}`}
+              href={`/api/admin/bookings/${booking.id}/confirm?token=${booking.adminToken}&from=admin`}
               className="rounded-md bg-success px-6 py-2.5 font-semibold text-black hover:brightness-110 transition text-center"
             >
               ✓ Confirmar
             </a>
             <a
-              href={`/api/admin/bookings/${booking.id}/reject?token=${booking.adminToken}`}
+              href={`/api/admin/bookings/${booking.id}/reject?token=${booking.adminToken}&from=admin`}
               className="rounded-md bg-danger px-6 py-2.5 font-semibold text-white hover:brightness-110 transition text-center"
             >
               ✗ Cancelar

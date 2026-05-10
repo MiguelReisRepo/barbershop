@@ -14,11 +14,18 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params
-  const token = new URL(req.url).searchParams.get("token")
+  const url = new URL(req.url)
+  const token = url.searchParams.get("token")
+  const fromAdmin = url.searchParams.get("from") === "admin"
   const site = getSiteUrl()
 
+  const errorUrl = (code: string) =>
+    fromAdmin
+      ? `${site}/admin?flash=error&code=${code}`
+      : `${site}/admin/booking/${id}?error=${code}`
+
   if (!token) {
-    return redirectTo(`${site}/admin/booking/${id}?error=missing-token`)
+    return redirectTo(errorUrl("missing-token"))
   }
 
   const booking = await prisma.booking.findUnique({
@@ -27,13 +34,17 @@ export async function GET(
   })
 
   if (!booking) {
-    return redirectTo(`${site}/admin/booking/${id}?error=not-found`)
+    return redirectTo(errorUrl("not-found"))
   }
   if (booking.adminToken !== token) {
-    return redirectTo(`${site}/admin/booking/${id}?error=invalid-token`)
+    return redirectTo(errorUrl("invalid-token"))
   }
   if (booking.status === "CANCELLED") {
-    return redirectTo(`${site}/admin/booking/${id}?token=${token}&already=1`)
+    return redirectTo(
+      fromAdmin
+        ? `${site}/admin?flash=already-cancelled`
+        : `${site}/admin/booking/${id}?token=${token}&already=1`,
+    )
   }
 
   const updated = await prisma.booking.update({
@@ -72,7 +83,11 @@ export async function GET(
     }
   }
 
-  return redirectTo(`${site}/admin/booking/${id}?token=${token}&rejected=1`)
+  return redirectTo(
+    fromAdmin
+      ? `${site}/admin?flash=cancelled`
+      : `${site}/admin/booking/${id}?token=${token}&rejected=1`,
+  )
 }
 
 function redirectTo(url: string): NextResponse {

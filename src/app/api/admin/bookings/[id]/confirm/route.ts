@@ -16,11 +16,24 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params
-  const token = new URL(req.url).searchParams.get("token")
+  const url = new URL(req.url)
+  const token = url.searchParams.get("token")
+  const fromAdmin = url.searchParams.get("from") === "admin"
   const site = getSiteUrl()
 
+  // Where to land when the action is done. Email links → detail page (so the
+  // barber sees the booking context). Admin UI → back to the list.
+  const successUrl = (qs: string) =>
+    fromAdmin
+      ? `${site}/admin?flash=confirmed`
+      : `${site}/admin/booking/${id}?token=${token}&${qs}`
+  const errorUrl = (code: string) =>
+    fromAdmin
+      ? `${site}/admin?flash=error&code=${code}`
+      : `${site}/admin/booking/${id}?error=${code}`
+
   if (!token) {
-    return redirectTo(`${site}/admin/booking/${id}?error=missing-token`)
+    return redirectTo(errorUrl("missing-token"))
   }
 
   const booking = await prisma.booking.findUnique({
@@ -29,21 +42,23 @@ export async function GET(
   })
 
   if (!booking) {
-    return redirectTo(`${site}/admin/booking/${id}?error=not-found`)
+    return redirectTo(errorUrl("not-found"))
   }
   if (booking.adminToken !== token) {
-    return redirectTo(`${site}/admin/booking/${id}?error=invalid-token`)
+    return redirectTo(errorUrl("invalid-token"))
   }
 
   // Idempotent: if already confirmed, just redirect to status page
   if (booking.status === "CONFIRMED") {
-    return redirectTo(`${site}/admin/booking/${id}?token=${token}&already=1`)
+    return redirectTo(
+      fromAdmin
+        ? `${site}/admin?flash=already-confirmed`
+        : `${site}/admin/booking/${id}?token=${token}&already=1`,
+    )
   }
 
   if (booking.status === "CANCELLED") {
-    return redirectTo(
-      `${site}/admin/booking/${id}?token=${token}&error=already-cancelled`,
-    )
+    return redirectTo(errorUrl("already-cancelled"))
   }
 
   // Update booking
@@ -84,7 +99,7 @@ export async function GET(
     }
   }
 
-  return redirectTo(`${site}/admin/booking/${id}?token=${token}&confirmed=1`)
+  return redirectTo(successUrl("confirmed=1"))
 }
 
 function redirectTo(url: string): NextResponse {
