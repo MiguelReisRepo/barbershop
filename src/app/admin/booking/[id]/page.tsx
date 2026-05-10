@@ -38,10 +38,10 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             {errorMessage(error)}
           </p>
           <Link
-            href="/"
+            href="/admin"
             className="mt-6 inline-block btn-gold rounded-md px-6 py-2.5"
           >
-            Voltar ao site
+            Voltar ao painel
           </Link>
         </div>
       </main>
@@ -194,8 +194,11 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
       </div>
 
       <div className="mt-6 text-center">
-        <Link href="/" className="text-gold underline text-sm hover:text-gold-bright">
-          Voltar ao site
+        <Link
+          href="/admin"
+          className="text-gold underline text-sm hover:text-gold-bright"
+        >
+          Voltar ao painel
         </Link>
       </div>
     </main>
