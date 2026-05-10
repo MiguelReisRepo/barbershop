@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { sendEmail, clientCancelledEmail, getSiteUrl } from "@/lib/email"
+import { deleteEvent } from "@/lib/gcal"
 
 /**
  * GET /api/admin/bookings/[id]/reject?token=...
@@ -51,6 +52,15 @@ export async function GET(
     where: { id },
     data: { status: "CANCELLED", cancelledAt: new Date() },
   })
+
+  // Remove the GCal event so cancelled slots stop polluting the calendar
+  if (booking.gcalEventId) {
+    try {
+      await deleteEvent(booking.gcalEventId)
+    } catch (e) {
+      console.error("[admin/reject] gcal delete failed:", e)
+    }
+  }
 
   if (booking.email) {
     try {

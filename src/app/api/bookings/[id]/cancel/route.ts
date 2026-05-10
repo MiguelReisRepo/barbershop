@@ -7,6 +7,7 @@ import {
   ADMIN_EMAIL,
   getSiteUrl,
 } from "@/lib/email"
+import { deleteEvent } from "@/lib/gcal"
 
 /**
  * GET /api/bookings/[id]/cancel?token=<clientToken>
@@ -50,6 +51,15 @@ export async function GET(
     where: { id },
     data: { status: "CANCELLED", cancelledAt: new Date() },
   })
+
+  // Remove the GCal event so cancelled slots stop polluting the calendar
+  if (booking.gcalEventId) {
+    try {
+      await deleteEvent(booking.gcalEventId)
+    } catch (e) {
+      console.error("[client/cancel] gcal delete failed:", e)
+    }
+  }
 
   // Notify the barber that the client cancelled
   try {

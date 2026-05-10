@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { sendEmail, clientConfirmedEmail, getSiteUrl } from "@/lib/email"
+import { updateEvent } from "@/lib/gcal"
 
 /**
  * GET /api/admin/bookings/[id]/confirm?token=...
@@ -66,6 +67,17 @@ export async function GET(
     where: { id },
     data: { status: "CONFIRMED", confirmedAt: new Date() },
   })
+
+  // Drop the "[PENDENTE]" prefix from the GCal event title (best effort)
+  if (booking.gcalEventId) {
+    try {
+      await updateEvent(booking.gcalEventId, {
+        summary: `${updated.serviceName} - ${booking.client.name}`,
+      })
+    } catch (e) {
+      console.error("[admin/confirm] gcal rename failed:", e)
+    }
+  }
 
   // Send confirmation email to client (best effort)
   if (booking.email) {

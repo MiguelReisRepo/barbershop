@@ -130,3 +130,21 @@ export async function deleteEvent(eventId: string): Promise<void> {
     eventId,
   })
 }
+
+/**
+ * Patch an existing event's summary/description (e.g., to drop the
+ * "[PENDENTE]" prefix once the booking is confirmed). No-op if GCal
+ * isn't configured or the event id is missing.
+ */
+export async function updateEvent(
+  eventId: string,
+  patch: { summary?: string; description?: string },
+): Promise<void> {
+  if (!hasCredentials()) return
+  const cal = getClient()
+  await cal.events.patch({
+    calendarId: process.env.GCAL_CALENDAR_ID!,
+    eventId,
+    requestBody: patch,
+  })
+}
