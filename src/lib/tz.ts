@@ -1,4 +1,5 @@
 import { fromZonedTime, toZonedTime, format as formatTz } from "date-fns-tz"
+import { pt } from "date-fns/locale"
 
 export const TZ = "Europe/Lisbon"
 
@@ -15,7 +16,12 @@ export function utcToLisbon(utcDate: Date): Date {
  * @param fmt - date-fns format string (e.g. "HH:mm", "dd/MM/yyyy")
  */
 export function formatLisbon(date: Date, fmt: string): string {
-  return formatTz(toZonedTime(date, TZ), fmt, { timeZone: TZ })
+  const out = formatTz(toZonedTime(date, TZ), fmt, { timeZone: TZ, locale: pt })
+  // PT locale lowercases weekday and month ("domingo, 10 de maio"); we capitalize
+  // the first letter and the word after " de " for UI consistency.
+  return out
+    .replace(/^([a-záéíóúâêôãõç])/, (c) => c.toUpperCase())
+    .replace(/(\sde\s)([a-záéíóúâêôãõç])/g, (_m, p, c) => p + c.toUpperCase())
 }
 
 /**
