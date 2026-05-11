@@ -20,18 +20,32 @@ export const dynamic = "force-dynamic"
 export default async function DashboardPage() {
   const now = new Date()
 
-  // Period boundaries (UTC anchors) — good enough for stats; for strict
-  // Lisbon-local boundaries we'd use getLisbonDayBounds, but month/year
-  // boundaries are not DST-sensitive.
+  // Period boundaries (UTC anchors). Each period has an inclusive lower bound
+  // and exclusive upper bound so a booking scheduled inside one period stops
+  // bleeding into the wider ones (e.g., a booking next month no longer counts
+  // toward "Hoje", "Esta semana", AND "Este mês" at the same time).
   const startOfDay = new Date(now)
   startOfDay.setUTCHours(0, 0, 0, 0)
+  const endOfDay = new Date(startOfDay)
+  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1)
+
   const startOfWeek = new Date(now)
   startOfWeek.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7)) // Monday
   startOfWeek.setUTCHours(0, 0, 0, 0)
+  const endOfWeek = new Date(startOfWeek)
+  endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7)
+
   const startOfMonth = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
   )
+  const startOfNextMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+  )
+
   const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1))
+  const startOfNextYear = new Date(
+    Date.UTC(now.getUTCFullYear() + 1, 0, 1),
+  )
 
   const earningStatuses = { in: ["CONFIRMED", "COMPLETED"] }
 
@@ -50,22 +64,34 @@ export default async function DashboardPage() {
     cancelledThisMonth,
   ] = await Promise.all([
     prisma.booking.aggregate({
-      where: { status: earningStatuses, startUtc: { gte: startOfDay } },
+      where: {
+        status: earningStatuses,
+        startUtc: { gte: startOfDay, lt: endOfDay },
+      },
       _sum: { servicePrice: true },
       _count: true,
     }),
     prisma.booking.aggregate({
-      where: { status: earningStatuses, startUtc: { gte: startOfWeek } },
+      where: {
+        status: earningStatuses,
+        startUtc: { gte: startOfWeek, lt: endOfWeek },
+      },
       _sum: { servicePrice: true },
       _count: true,
     }),
     prisma.booking.aggregate({
-      where: { status: earningStatuses, startUtc: { gte: startOfMonth } },
+      where: {
+        status: earningStatuses,
+        startUtc: { gte: startOfMonth, lt: startOfNextMonth },
+      },
       _sum: { servicePrice: true },
       _count: true,
     }),
     prisma.booking.aggregate({
-      where: { status: earningStatuses, startUtc: { gte: startOfYear } },
+      where: {
+        status: earningStatuses,
+        startUtc: { gte: startOfYear, lt: startOfNextYear },
+      },
       _sum: { servicePrice: true },
       _count: true,
     }),
@@ -106,7 +132,10 @@ export default async function DashboardPage() {
       take: 5,
     }),
     prisma.booking.count({
-      where: { status: "CANCELLED", startUtc: { gte: startOfMonth } },
+      where: {
+        status: "CANCELLED",
+        startUtc: { gte: startOfMonth, lt: startOfNextMonth },
+      },
     }),
   ])
 
